@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>캐주얼 퍼즐 – 매치3</title>
+  <style>
+    :root{
+      --bg:#0f172a;          /* slate-900 */
+      --panel:#111827cc;     /* gray-900/80 */
+      --accent:#38bdf8;      /* sky-400 */
+      --accent-2:#22c55e;    /* green-500 */
+      --text:#e5e7eb;        /* gray-200 */
+      --muted:#94a3b8;       /* slate-400 */
+      --tile-bg:#0b1225;     /* darker */
+      --tile-border:#1f2937; /* gray-800 */
+      --invalid:#ef4444;     /* red-500 */
+      --gold:#fbbf24;        /* amber-400 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color:var(--text); background: radial-gradient(1200px 800px at 80% -20%, #0b1225 0%, #0f172a 40%, #0b1225 100%), var(--bg);
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .wrap{ width:min(92vw, 980px); display:grid; grid-template-columns: 1fr 360px; gap:20px; align-items:start }
+    @media (max-width: 900px){ .wrap{ grid-template-columns: 1fr; } }
+
+    .panel{
+      background:linear-gradient(180deg, #0f172acc, #0b1225cc); backdrop-filter: blur(8px);
+      border:1px solid #1f2937; box-shadow: 0 10px 30px #0006; border-radius:20px; padding:18px 18px 14px;
+    }
+    .title{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px;}
+    .title .logo{width:14px;height:14px;border-radius:4px;background:conic-gradient(from 180deg, var(--accent), #6366f1, #f43f5e, #f59e0b, var(--accent)); box-shadow:0 0 12px #38bdf866}
+    .subtitle{color:var(--muted); font-size:14px; margin-top:4px}
+
+    /* HUD */
+    .hud{ display:flex; gap:12px; flex-wrap:wrap; margin-top:10px }
+    .stat{
+      padding:10px 12px; border-radius:12px; border:1px solid #1f2937; background: #0b1225bb; min-width:110px; text-align:center;
+    }
+    .stat .label{ color:var(--muted); font-size:12px; letter-spacing:.3px }
+    .stat .value{ font-size:22px; font-weight:800; margin-top:2px }
+
+    .actions{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap }
+    button.btn{
+      cursor:pointer; border:1px solid #1f2937; background: #0b1225; color:var(--text); padding:10px 14px; border-radius:12px; font-weight:700;
+      transition: transform .06s ease, box-shadow .06s ease, background .12s ease;
+    }
+    button.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 14px #0007 }
+    button.primary{ background: linear-gradient(180deg, #1f2937, #0b1225); border-color:#263244 }
+    button.accent{ background: linear-gradient(180deg, #1e293b, #0b1225); border-color:#1e3a8a }
+
+    /* Board */
+    .board{ aspect-ratio:1/1; width:min(86vw, 560px); margin:auto; position:relative }
+    .grid{
+      display:grid; grid-template-columns: repeat(var(--n,8), 1fr); grid-template-rows: repeat(var(--n,8), 1fr);
+      gap:6px; width:100%; height:100%; padding:8px; border-radius:20px; background:linear-gradient(180deg, #0b1225, #0a0f1e);
+      border:1px solid #1f2937; box-shadow: inset 0 6px 30px #0007;
+    }
+    .cell{
+      display:flex; align-items:center; justify-content:center; border-radius:14px; border:1px solid var(--tile-border);
+      background: radial-gradient(120% 140% at 30% 20%, #1b2a4a, #0e162b); font-size: clamp(22px, 5vw, 36px);
+      user-select:none; cursor:pointer; transition: transform .08s ease, box-shadow .1s ease, filter .1s ease;
+      position:relative; overflow:hidden;
+    }
+    .cell:active{ transform:scale(.98) }
+    .cell.selected{ outline:2px solid var(--accent); box-shadow: 0 0 0 3px #38bdf866 inset }
+    .cell.pop{ animation: pop .28s ease both }
+    @keyframes pop{ 0%{ transform:scale(1) } 40%{ transform:scale(1.2) } 100%{ transform:scale(1) } }
+    .cell.clearing{ filter: brightness(1.8) saturate(1.3); }
+    .shine{ position:absolute; inset:-40%; background:linear-gradient(60deg, transparent 40%, #ffffff18 50%, transparent 60%); transform: rotate(8deg) }
+
+    .footer{ color:var(--muted); font-size:13px; margin-top:10px }
+    .toast{
+      position:absolute; inset:auto 0 10px 0; margin:auto; width:max-content; padding:10px 14px; border-radius:999px; border:1px solid #334155; background:#0b1225ee; color:#e2e8f0; font-weight:700; box-shadow:0 8px 22px #0008; display:none
+    }
+    .toast.show{ display:block; animation: fade .8s ease both }
+    @keyframes fade{ 0%{ opacity:0; transform:translateY(6px) } 100%{ opacity:1; transform:translateY(0) } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <div class="title"><span class="logo"></span> 캐주얼 퍼즐 · 매치3</div>
+      <div class="subtitle">인접한 타일 두 개를 바꿔서 같은 모양 3개 이상을 가로/세로로 맞추세요. 연쇄로 점수를 노려보세요!</div>
+      <div class="hud">
+        <div class="stat"><div class="label">점수</div><div id="score" class="value">0</div></div>
+        <div class="stat"><div class="label">남은 이동</div><div id="moves" class="value">30</div></div>
+        <div class="stat"><div class="label">목표</div><div id="target" class="value">2,000</div></div>
+        <div class="stat"><div class="label">연쇄</div><div id="chain" class="value">×1</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="newGame">새 게임</button>
+        <button class="btn accent" id="hintBtn">힌트 보기</button>
+        <button class="btn" id="howBtn">방법</button>
+      </div>
+      <div class="footer">Tip: 가능한 교환 중 매치가 생기는 쌍만 허용됩니다. 힌트는 점수 패널 아래에 잠깐 표시돼요.</div>
+    </section>
+
+    <section class="panel board">
+      <div id="toast" class="toast">잘못된 이동이에요</div>
+      <div id="grid" class="grid" aria-label="퍼즐 보드" role="grid"></div>
+    </section>
+  </div>
+
+  <script>
+    const SIZE = 8;                     // 보드 크기 (8x8)
+    const TYPES = ["🐶","🐱","🐭","🐹","🐰","🐻"]; // 동물 얼굴 이모지로 교체 // 타일 종류 이모지로 간단하게
+    const SCORE_PER_TILE = 10;
+    const START_MOVES = 30;
+    const TARGET_SCORE = 2000;
+
+    const gridEl = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const movesEl = document.getElementById('moves');
+    const chainEl = document.getElementById('chain');
+    const toastEl = document.getElementById('toast');
+
+    document.documentElement.style.setProperty('--n', SIZE);
+
+    let grid = [];           // 1차원 배열로 보관 (row*SIZE + col)
+    let selected = null;     // 선택된 인덱스
+    let score = 0;
+    let moves = START_MOVES;
+    let chain = 1;           // 연쇄 배수
+    let busy = false;        // 처리 중 입력 잠금
+
+    // 유틸
+    const idx = (r,c)=> r*SIZE + c;
+    const rowOf = i => Math.floor(i / SIZE);
+    const colOf = i => i % SIZE;
+    const inBounds = (r,c)=> r>=0 && c>=0 && r<SIZE && c<SIZE;
+    const randType = ()=> Math.floor(Math.random() * TYPES.length);
+
+    function newGame(){
+      score = 0; moves = START_MOVES; chain = 1; updateHUD();
+      grid = new Array(SIZE*SIZE).fill(0);
+      // 초기 배치: 즉시 매치가 생기지 않도록 채우기
+      for(let r=0;r<SIZE;r++){
+        for(let c=0;c<SIZE;c++){
+          let t;
+          do{ t = randType(); }
+          while( (c>=2 && grid[idx(r,c-1)]===t && grid[idx(r,c-2)]===t) ||
+                 (r>=2 && grid[idx(r-1,c)]===t && grid[idx(r-2,c)]===t) );
+          grid[idx(r,c)] = t;
+        }
+      }
+      render();
+      // 시작 배치가 막혔으면 강제로 섞기
+      if (!hasAnyValidSwap()) reshuffle();
+    }
+
+    function updateHUD(){
+      scoreEl.textContent = score.toLocaleString();
+      movesEl.textContent = moves;
+      chainEl.textContent = `×${chain}`;
+      document.getElementById('target').textContent = TARGET_SCORE.toLocaleString();
+    }
+
+    function render(){
+      gridEl.innerHTML = '';
+      grid.forEach((t, i)=>{
+        const cell = document.createElement('button');
+        cell.className = 'cell';
+        cell.setAttribute('role','gridcell');
+        cell.dataset.i = i;
+        cell.innerHTML = `<div class="shine"></div>${TYPES[t]}`;
+        if(selected === i) cell.classList.add('selected');
+        cell.addEventListener('click', onCellClick);
+        gridEl.appendChild(cell);
+      });
+    }
+
+    function onCellClick(e){
+      if (busy) return;
+      const i = +e.currentTarget.dataset.i;
+      if (selected === null){
+        selected = i; render();
+      } else if (selected === i){
+        selected = null; render();
+      } else if (isAdjacent(selected, i)){
+        trySwap(selected, i);
+      } else {
+        selected = i; render();
+      }
+    }
+
+    const isAdjacent = (a,b)=>{
+      const ar=rowOf(a), ac=colOf(a), br=rowOf(b), bc=colOf(b);
+      return (ar===br && Math.abs(ac-bc)===1) || (ac===bc && Math.abs(ar-br)===1);
+    }
+
+    function trySwap(a,b){
+      busy = true;
+      swap(a,b);
+      const matches = findMatches();
+      if(matches.size===0){
+        // 원복 + 토스트
+        swap(a,b);
+        toast("매치가 생기지 않아요!", true);
+        pulseInvalid([a,b]);
+        busy = false; selected = null; render();
+      } else {
+        // 유효 이동
+        moves--; chain = 1; updateHUD();
+        selected = null; render();
+        resolveBoard(matches).then(()=>{
+          busy = false;
+          checkEnd();
+        });
+      }
+    }
+
+    function swap(a,b){
+      const t = grid[a]; grid[a]=grid[b]; grid[b]=t;
+    }
+
+    function findMatches(){
+      const del = new Set();
+      // 가로
+      for(let r=0;r<SIZE;r++){
+        let runLen=1;
+        for(let c=1;c<=SIZE;c++){
+          const cur = c<SIZE ? grid[idx(r,c)] : -999;
+          const prev = grid[idx(r,c-1)];
+          if(c<SIZE && cur===prev){ runLen++; }
+          else{ if(runLen>=3){ for(let k=1;k<=runLen;k++) del.add(idx(r,c-k)); } runLen=1; }
+        }
+      }
+      // 세로
+      for(let c=0;c<SIZE;c++){
+        let runLen=1;
+        for(let r=1;r<=SIZE;r++){
+          const cur = r<SIZE ? grid[idx(r,c)] : -999;
+          const prev = grid[idx(r-1,c)];
+          if(r<SIZE && cur===prev){ runLen++; }
+          else{ if(runLen>=3){ for(let k=1;k<=runLen;k++) del.add(idx(r-k,c)); } runLen=1; }
+        }
+      }
+      return del;
+    }
+
+    function clearMatches(del){
+      del.forEach(i=> grid[i] = null);
+    }
+
+    function dropAndFill(){
+      // 각 열마다 아래로 당기기
+      for(let c=0;c<SIZE;c++){
+        let wr = SIZE-1; // 쓰기 위치 (아래부터)
+        for(let r=SIZE-1;r>=0;r--){
+          const i = idx(r,c);
+          if(grid[i]!==null){
+            grid[idx(wr,c)] = grid[i];
+            wr--;
+          }
+        }
+        // 위쪽 비는 칸 채우기
+        for(let r=wr;r>=0;r--){
+          grid[idx(r,c)] = randType();
+        }
+      }
+    }
+
+    function animateClearing(del){
+      // 간단한 시각 효과: 해당 셀에 클래스 부여 후 잠깐 기다림
+      const nodes = [...gridEl.children];
+      del.forEach(i=> nodes[i]?.classList.add('clearing'));
+      return wait(180);
+    }
+
+    function pulseInvalid(arr){
+      const nodes = [...gridEl.children];
+      arr.forEach(i=> nodes[i]?.classList.add('pop'));
+      setTimeout(()=> arr.forEach(i=> nodes[i]?.classList.remove('pop')), 300);
+    }
+
+    function wait(ms){ return new Promise(res=> setTimeout(res, ms)); }
+
+    async function resolveBoard(initialDel){
+      let del = initialDel;
+      while(del.size){
+        await animateClearing(del);
+        // 점수: 타일 수 × 기본점수 × 연쇄배수
+        score += del.size * SCORE_PER_TILE * chain;
+        updateHUD();
+        clearMatches(del);
+        render();
+        await wait(80);
+        dropAndFill();
+        render();
+        await wait(120);
+        del = findMatches();
+        if(del.size){ chain++; updateHUD(); }
+      }
+      // 막히면 섞기
+      if(!hasAnyValidSwap()) reshuffle(true);
+    }
+
+    function toast(text, danger=false){
+      toastEl.textContent = text;
+      toastEl.style.borderColor = danger ? 'var(--invalid)' : '#334155';
+      toastEl.classList.add('show');
+      setTimeout(()=> toastEl.classList.remove('show'), 850);
+    }
+
+    function checkEnd(){
+      if(moves <= 0){
+        const win = score >= TARGET_SCORE;
+        const msg = win ? `성공! 목표 달성 (${score.toLocaleString()}점)` : `실패… 점수: ${score.toLocaleString()}`;
+        setTimeout(()=>{
+          alert(msg + "\n다시 시작할게요.");
+          newGame();
+        }, 250);
+      }
+    }
+
+    // 힌트: 가능한 유효 교환 중 하나를 찾아 강조
+    function hint(){
+      for(let i=0;i<grid.length;i++){
+        const neigh = neighborsOf(i);
+        for(const j of neigh){
+          swap(i,j);
+          const ok = findMatches().size>0;
+          swap(i,j);
+          if(ok){
+            highlight([i,j]);
+            toast('여기를 바꿔보세요');
+            return;
+          }
+        }
+      }
+      toast('가능한 이동이 없어 섞습니다');
+      reshuffle(true);
+    }
+
+    function neighborsOf(i){
+      const r=rowOf(i), c=colOf(i), arr=[];
+      if(inBounds(r,c-1)) arr.push(idx(r,c-1));
+      if(inBounds(r,c+1)) arr.push(idx(r,c+1));
+      if(inBounds(r-1,c)) arr.push(idx(r-1,c));
+      if(inBounds(r+1,c)) arr.push(idx(r+1,c));
+      return arr;
+    }
+
+    function highlight(is){
+      const nodes=[...gridEl.children];
+      is.forEach(k=> nodes[k]?.classList.add('selected'));
+      setTimeout(()=> is.forEach(k=> nodes[k]?.classList.remove('selected')), 900);
+    }
+
+    function hasAnyValidSwap(){
+      for(let i=0;i<grid.length;i++){
+        for(const j of neighborsOf(i)){
+          swap(i,j);
+          const ok = findMatches().size>0;
+          swap(i,j);
+          if(ok) return true;
+        }
+      }
+      return false;
+    }
+
+    function reshuffle(announce=false){
+      // 단순 셔플 후, 시작 매치 제거 & 유효 교환 보장
+      let tries = 0;
+      do{
+        for(let i=grid.length-1;i>0;i--){
+          const j = Math.floor(Math.random()*(i+1));
+          const t = grid[i]; grid[i]=grid[j]; grid[j]=t;
+        }
+        // 초기 매치 제거용 재배치: 매치되는 지점은 무작위 교체
+        let del = findMatches();
+        let guard=0;
+        while(del.size && guard++<50){
+          del.forEach(i=> grid[i] = randType());
+          del = findMatches();
+        }
+      } while(!hasAnyValidSwap() && ++tries<40);
+      render();
+      if(announce) toast('보드를 섞었습니다');
+    }
+
+    // 버튼들
+    document.getElementById('newGame').addEventListener('click', newGame);
+    document.getElementById('hintBtn').addEventListener('click', hint);
+    document.getElementById('howBtn').addEventListener('click', ()=>{
+      alert('규칙\n\n1) 인접한 타일 두 개를 교환합니다.\n2) 가로/세로로 같은 모양 3개 이상이 연결되면 제거되고 점수를 획득합니다.\n3) 제거 후 위의 타일이 내려오며 빈 칸은 채워집니다.\n4) 연쇄가 이어질수록 배수가 올라갑니다.\n5) 이동 횟수 내에 목표 점수를 달성해보세요!');
+    });
+
+    // 시작!
+    newGame();
+  </script>
+</body>
+</html>
