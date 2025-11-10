@@ -6,19 +6,31 @@
   <title>캐주얼 퍼즐 – 매치3</title>
   <style>
     :root{
-      --bg:#0f172a;          /* slate-900 */
-      --panel:#111827cc;     /* gray-900/80 */
-      --accent:#38bdf8;      /* sky-400 */
-      --accent-2:#22c55e;    /* green-500 */
-      --text:#e5e7eb;        /* gray-200 */
-      --muted:#94a3b8;       /* slate-400 */
-      --tile-bg:#0b1225;     /* darker */
-      --tile-border:#1f2937; /* gray-800 */
-      --invalid:#ef4444;     /* red-500 */
-      --gold:#fbbf24;        /* amber-400 */
+      --bg:#cfe9ff;          /* sky blue */
+      --panel:#ffffffd9;     /* soft glass */
+      --accent:#60d394;      /* mint */
+      --accent-2:#f9a8d4;    /* pink */
+      --text:#263238;        /* dark slate */
+      --muted:#667085;       /* gray */
+      --tile-bg:#eaf7ff;     /* cell base */
+      --tile-border:#c8e2ff; /* cell border */
+      --invalid:#ef4444;     /* red */
+      --gold:#fbbf24;        /* amber */
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
+    html,body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color:var(--text);
+      background: linear-gradient(180deg, #bfe4ff 0%, #e7f6ff 55%, #f7ffe5 100%);
+      min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    /* Park hills */
+    body::before, body::after{
+      content:""; position:fixed; inset:auto -10% 0 -10%; height:28vh; pointer-events:none; z-index:-1; border-radius:40% 40% 0 0;
+      background: radial-gradient(80% 120% at 20% 100%, #77d67a 0%, #87e187 40%, #b3f0b3 65%, #eaffea 100%);
+      filter: drop-shadow(0 -6px 24px #78cc7b66);
+    }
+    body::after{ height:20vh; transform: translateY(10%); background: radial-gradient(80% 120% at 80% 100%, #8be18e 0%, #a1ef9f 45%, #d7ffd7 100%);} 
     body{
       margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       color:var(--text); background: radial-gradient(1200px 800px at 80% -20%, #0b1225 0%, #0f172a 40%, #0b1225 100%), var(--bg);
@@ -26,12 +38,41 @@
     }
     .wrap{ width:min(92vw, 980px); display:grid; grid-template-columns: 1fr 360px; gap:20px; align-items:start }
     @media (max-width: 900px){ .wrap{ grid-template-columns: 1fr; } }
+    @media (max-width: 520px){ .grid{
+      display:grid; grid-template-columns: repeat(var(--n,8), 1fr); grid-template-rows: repeat(var(--n,8), 1fr);
+      gap:8px; width:100%; height:100%; padding:10px; border-radius:22px;
+      background: linear-gradient(180deg, #e7fbf0, #def5ff);
+      border:1px solid #cfe4ff; box-shadow: inset 0 10px 30px #a8d7ff66, 0 10px 30px #7ad3a955;
+    } .cell{
+      display:flex; align-items:center; justify-content:center; border-radius:16px; border:1px solid var(--tile-border);
+      background: radial-gradient(140% 160% at 30% 25%, #ffffff, #e4f6ff 40%, #dff7eb 100%);
+      font-size: clamp(26px, 5.4vw, 40px); user-select:none; cursor:pointer; position:relative; overflow:hidden;
+      transition: transform .08s ease, box-shadow .1s ease, filter .1s ease;
+      box-shadow: 0 6px 0 #98c6ff, 0 12px 20px #8bc3ff55; /* 3D raised */
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    .cell:active{ transform:translateY(1px); box-shadow: 0 5px 0 #8bb8ff, 0 8px 16px #8bc3ff55 }
+    .cell.selected{ outline:2px solid var(--accent); box-shadow: 0 0 0 3px #60d39466 inset, 0 6px 0 #98c6ff }
+    .cell.pop{ animation: pop .28s ease both }
+    @keyframes pop{ 0%{ transform:translateY(0) scale(1) } 40%{ transform:translateY(-2px) scale(1.15) } 100%{ transform:translateY(0) scale(1) } }
+    .cell.clearing{ filter: brightness(1.2) saturate(1.2); }
+    .shine{ position:absolute; inset:-40%; background:linear-gradient(60deg, transparent 40%, #ffffff33 50%, transparent 60%); transform: rotate(8deg) } .wrap{ width: 100% } .panel{
+      background:linear-gradient(180deg, var(--panel), #ffffffb8); backdrop-filter: blur(10px);
+      border:1px solid #dbeafe; box-shadow: 0 14px 30px #8bc3ff55, 0 2px 0 #ffffff88 inset; border-radius:22px; padding:18px 18px 14px;
+    } .hud{ gap:8px } .stat{
+      padding:10px 12px; border-radius:16px; border:1px solid #dbeafe; background: #ffffffcc; min-width:120px; text-align:center;
+      box-shadow: 0 6px 16px #8bc3ff55, 0 1px 0 #fff inset;
+    }
+    .stat .label{ color:#6b7280; font-size:12px; letter-spacing:.3px }
+    .stat .value{ font-size:24px; font-weight:900; margin-top:2px; color:#0f172a } }
 
     .panel{
       background:linear-gradient(180deg, #0f172acc, #0b1225cc); backdrop-filter: blur(8px);
       border:1px solid #1f2937; box-shadow: 0 10px 30px #0006; border-radius:20px; padding:18px 18px 14px;
     }
-    .title{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px;}
+    .title{display:flex; align-items:center; gap:10px; font-weight:900; letter-spacing:.2px; color:#1f2937}
+    .title .logo{width:16px;height:16px;border-radius:6px;background:conic-gradient(from 180deg, #60d394, #66e0ff, #f9a8d4, #ffd166, #60d394); box-shadow:0 0 12px #8de8c866}
+    .subtitle{color:#556274; font-size:14px; margin-top:6px} 
     .title .logo{width:14px;height:14px;border-radius:4px;background:conic-gradient(from 180deg, var(--accent), #6366f1, #f43f5e, #f59e0b, var(--accent)); box-shadow:0 0 12px #38bdf866}
     .subtitle{color:var(--muted); font-size:14px; margin-top:4px}
 
@@ -45,9 +86,14 @@
 
     .actions{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap }
     button.btn{
-      cursor:pointer; border:1px solid #1f2937; background: #0b1225; color:var(--text); padding:10px 14px; border-radius:12px; font-weight:700;
+      cursor:pointer; border:1px solid #dbeafe; background: linear-gradient(180deg, #ffffff, #f1fbff);
+      color:#18323a; padding:12px 16px; border-radius:999px; font-weight:800;
       transition: transform .06s ease, box-shadow .06s ease, background .12s ease;
+      box-shadow: 0 8px 0 #a8d7ff, 0 14px 24px #8bc3ff55;
     }
+    button.btn:hover{ transform:translateY(-2px); box-shadow:0 10px 0 #9cd1ff, 0 20px 28px #8bc3ff66 }
+    button.primary{ background: linear-gradient(180deg, #ffffff, #e7fff1); border-color:#b7f3c9 }
+    button.accent{ background: linear-gradient(180deg, #ffffff, #ffeefb); border-color:#f9a8d4 }
     button.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 14px #0007 }
     button.primary{ background: linear-gradient(180deg, #1f2937, #0b1225); border-color:#263244 }
     button.accent{ background: linear-gradient(180deg, #1e293b, #0b1225); border-color:#1e3a8a }
@@ -59,12 +105,7 @@
       gap:6px; width:100%; height:100%; padding:8px; border-radius:20px; background:linear-gradient(180deg, #0b1225, #0a0f1e);
       border:1px solid #1f2937; box-shadow: inset 0 6px 30px #0007;
     }
-    .cell{
-      display:flex; align-items:center; justify-content:center; border-radius:14px; border:1px solid var(--tile-border);
-      background: radial-gradient(120% 140% at 30% 20%, #1b2a4a, #0e162b); font-size: clamp(22px, 5vw, 36px);
-      user-select:none; cursor:pointer; transition: transform .08s ease, box-shadow .1s ease, filter .1s ease;
-      position:relative; overflow:hidden;
-    }
+    .cell{$1 touch-action: manipulation; -webkit-tap-highlight-color: transparent;}
     .cell:active{ transform:scale(.98) }
     .cell.selected{ outline:2px solid var(--accent); box-shadow: 0 0 0 3px #38bdf866 inset }
     .cell.pop{ animation: pop .28s ease both }
@@ -72,12 +113,14 @@
     .cell.clearing{ filter: brightness(1.8) saturate(1.3); }
     .shine{ position:absolute; inset:-40%; background:linear-gradient(60deg, transparent 40%, #ffffff18 50%, transparent 60%); transform: rotate(8deg) }
 
-    .footer{ color:var(--muted); font-size:13px; margin-top:10px }
+    .footer{ color:#6b7280; font-size:13px; margin-top:12px }
     .toast{
       position:absolute; inset:auto 0 10px 0; margin:auto; width:max-content; padding:10px 14px; border-radius:999px; border:1px solid #334155; background:#0b1225ee; color:#e2e8f0; font-weight:700; box-shadow:0 8px 22px #0008; display:none
     }
     .toast.show{ display:block; animation: fade .8s ease both }
     @keyframes fade{ 0%{ opacity:0; transform:translateY(6px) } 100%{ opacity:1; transform:translateY(0) } }
+  @media (max-width: 900px){ .wrap{ grid-template-columns: 1fr; } }
+    @media (max-width: 560px){ .grid{ gap:6px; padding:8px } .cell{ border-radius:14px; font-size: clamp(28px, 9.5vw, 48px) } .wrap{ width: 100% } .panel{ padding:14px } .hud{ gap:8px } .stat{ padding:10px 12px; min-width:unset } .actions{ gap:8px } }
   </style>
 </head>
 <body>
@@ -167,6 +210,35 @@
         cell.setAttribute('role','gridcell');
         cell.dataset.i = i;
         cell.innerHTML = `<div class="shine"></div>${TYPES[t]}`;
+        if(selected === i) cell.classList.add('selected');
+        cell.addEventListener('click', onCellClick);
+        // 모바일 스와이프 지원
+        let sx=0, sy=0; let startI=null;
+        cell.addEventListener('touchstart', (ev)=>{
+          if (busy) return;
+          const t = ev.touches[0]; sx = t.clientX; sy = t.clientY; startI = i;
+        }, {passive:true});
+        cell.addEventListener('touchend', (ev)=>{
+          if (busy) return;
+          const t = ev.changedTouches[0]; const dx = t.clientX - sx; const dy = t.clientY - sy;
+          const dist = Math.hypot(dx,dy);
+          const TH = 22; // 스와이프 임계값(px)
+          if(dist < TH){ // 탭처럼 처리
+            onCellClick({ currentTarget: { dataset: { i: String(i) } } });
+            return;
+          }
+          // 방향 계산 -> 인접 칸으로 변환
+          const ar=rowOf(startI), ac=colOf(startI);
+          let br=ar, bc=ac;
+          if(Math.abs(dx) > Math.abs(dy)) bc += (dx>0?1:-1); else br += (dy>0?1:-1);
+          if(inBounds(br,bc)){
+            const j = idx(br,bc);
+            if(isAdjacent(startI, j)) trySwap(startI, j);
+          }
+        }, {passive:true});
+        gridEl.appendChild(cell);
+      });
+    }`;
         if(selected === i) cell.classList.add('selected');
         cell.addEventListener('click', onCellClick);
         gridEl.appendChild(cell);
